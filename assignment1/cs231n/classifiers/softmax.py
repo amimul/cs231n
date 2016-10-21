@@ -29,7 +29,33 @@ def softmax_loss_naive(W, X, y, reg):
   # here, it is easy to run into numeric instability. Don't forget the        #
   # regularization!                                                           #
   #############################################################################
-  pass
+  num_train = X.shape[0]
+  num_class = W.shape[1]
+
+  scores = X.dot(W)
+  scores -= np.max(scores, axis=1, keepdims=True)
+  exp_scores = np.exp(scores)
+  exp_sum = np.sum(exp_scores, axis=1)
+
+  """
+  References for compute the gradient:
+  http://eli.thegreenplace.net/2016/the-softmax-function-and-its-derivative/
+  http://peterroelants.github.io/posts/neural_network_implementation_intermezzo02/
+  """
+
+  for i in range(num_train):
+    correct_class = y[i]
+    loss += -np.log(exp_scores[i][correct_class] / exp_sum[i])
+
+    for j in range(num_class):
+      dW[:, j] += (exp_scores[i][j] / exp_sum[i]) * X[i]
+      if j == y[i]:
+        dW[:, j] -= X[i]
+
+  loss /= num_train
+  loss += 0.5 * reg * np.sum(W * W)
+  dW /= num_train
+  dW += reg * W
   #############################################################################
   #                          END OF YOUR CODE                                 #
   #############################################################################
@@ -53,7 +79,22 @@ def softmax_loss_vectorized(W, X, y, reg):
   # here, it is easy to run into numeric instability. Don't forget the        #
   # regularization!                                                           #
   #############################################################################
-  pass
+  num_train = X.shape[0]
+
+  scores = X.dot(W)
+  scores -= np.max(scores, axis=1, keepdims=True)
+  exp_scores = np.exp(scores)
+  exp_sum = np.sum(exp_scores, axis=1, keepdims=True)
+  prob = exp_scores / exp_sum
+
+  loss += np.sum(-np.log(prob[np.arange(num_train), y]))
+  loss /= num_train
+  loss += 0.5 * reg * np.sum(W * W)
+
+  prob[np.arange(num_train), y] -= 1
+  dW += X.T.dot(prob)
+  dW /= num_train
+  dW += reg * W
   #############################################################################
   #                          END OF YOUR CODE                                 #
   #############################################################################
