@@ -34,6 +34,8 @@ def svm_loss_naive(W, X, y, reg):
       margin = scores[j] - correct_class_score + 1 # note delta = 1
       if margin > 0:
         loss += margin
+        dW[:, j] += X[i]
+        dW[:, y[i]] -= X[i]
 
   # Right now the loss is a sum over all training examples, but we want it
   # to be an average instead so we divide by num_train.
@@ -41,6 +43,10 @@ def svm_loss_naive(W, X, y, reg):
 
   # Add regularization to the loss.
   loss += 0.5 * reg * np.sum(W * W)
+
+  # Normalize and add regularization to the gradient
+  dW /= num_train
+  dW += reg * W
 
   #############################################################################
   # TODO:                                                                     #
@@ -69,7 +75,16 @@ def svm_loss_vectorized(W, X, y, reg):
   # Implement a vectorized version of the structured SVM loss, storing the    #
   # result in loss.                                                           #
   #############################################################################
-  pass
+  num_train = X.shape[0]
+  scores = X.dot(W)
+  correct_class_scores = scores[np.arange(len(scores)), y].reshape(-1, 1)
+
+  margins = scores - correct_class_scores + 1
+  margins[np.arange(num_train), y] = 0
+
+  loss = np.sum(margins[margins > 0])
+  loss /= num_train
+  loss += 0.5 * reg * np.sum(W * W)
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
@@ -84,7 +99,25 @@ def svm_loss_vectorized(W, X, y, reg):
   # to reuse some of the intermediate values that you used to compute the     #
   # loss.                                                                     #
   #############################################################################
-  pass
+  mask = np.int64(margins > 0)
+  mask[np.arange(num_train), y] -= np.sum(mask, axis=1)
+  dW = X.T.dot(mask)
+  dW /= num_train
+  dW += reg * W
+  """
+  Note: This does not work
+
+  dW = X.T.dot(margins > 0)
+  dW[:, y] -= X.T * np.sum(margins > 0, axis=1)
+  dW /= num_train
+  dW += reg * W
+
+  Because multi-indexing only change elements once
+
+  >>> b = np.array([1,2,3])
+  >>> b[[0,1,2,0,1,2]] += [90,80,70,6,5,4]
+  >>> b  # => array([7, 7, 7])
+  """
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
