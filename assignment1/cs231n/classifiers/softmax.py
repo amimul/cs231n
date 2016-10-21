@@ -49,7 +49,7 @@ def softmax_loss_naive(W, X, y, reg):
 
     for j in range(num_class):
       dW[:, j] += (exp_scores[i][j] / exp_sum[i]) * X[i]
-      if j == y[i]:
+      if j == correct_class:
         dW[:, j] -= X[i]
 
   loss /= num_train
