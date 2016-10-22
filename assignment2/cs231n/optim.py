@@ -65,7 +65,8 @@ def sgd_momentum(w, dw, config=None):
   # TODO: Implement the momentum update formula. Store the updated value in   #
   # the next_w variable. You should also use and update the velocity v.       #
   #############################################################################
-  pass
+  v = config['momentum'] * v - config['learning_rate'] * dw
+  next_w = w + v
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
@@ -99,7 +100,12 @@ def rmsprop(x, dx, config=None):
   # in the next_x variable. Don't forget to update cache value stored in      #  
   # config['cache'].                                                          #
   #############################################################################
-  pass
+  decay_rate = config['decay_rate']
+  learning_rate = config['learning_rate']
+  epsilon = config['epsilon']
+
+  config['cache'] = decay_rate * config['cache'] + (1 - decay_rate) * (dx**2)
+  next_x = x - learning_rate * dx / (np.sqrt(config['cache']) + epsilon)
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
@@ -136,7 +142,24 @@ def adam(x, dx, config=None):
   # the next_x variable. Don't forget to update the m, v, and t variables     #
   # stored in config.                                                         #
   #############################################################################
-  pass
+  learning_rate = config['learning_rate']
+  beta1 = config['beta1']
+  beta2 = config['beta2']
+  epsilon = config['epsilon']
+
+  config['m'] = beta1 * config['m'] + (1 - beta1) * dx
+  config['v'] = beta2 * config['v'] + (1 - beta2) * (dx**2)
+
+  """
+  Include initialization bias correction terms in order to pass the test. Ref:
+  http://cs229.stanford.edu/proj2015/054_report.pdf
+  http://sebastianruder.com/optimizing-gradient-descent/
+  """
+  config['t'] += 1
+  m_b = config['m'] / (1 - beta1**config['t'])
+  v_b = config['v'] / (1 - beta2**config['t'])
+
+  next_x = x - learning_rate * m_b / (np.sqrt(v_b) + epsilon)
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
