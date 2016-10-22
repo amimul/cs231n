@@ -112,15 +112,33 @@ class TwoLayerNet(object):
     # and biases. Store the results in the grads dictionary. For example,       #
     # grads['W1'] should store the gradient on W1, and be a matrix of same size #
     #############################################################################
-    d_output = prob
-    d_output[np.arange(N), y] -= 1
-    grads['W2'] = relu.T.dot(d_output) / N + reg * W2
-    grads['b2'] = np.sum(d_output, axis=0) / N
+    dsoftmax_dfc2 = prob.copy()
+    dsoftmax_dfc2[np.arange(N), y] -= 1
+    dsoftmax_dfc2 /= N                                # (N, C)
 
-    d_hidden = d_output.dot(W2.T)
-    d_hidden[relu <= 0] = 0
-    grads['W1'] = X.T.dot(d_hidden) / N + reg * W1
-    grads['b1'] = np.sum(d_hidden, axis=0) / N
+    dfc2_drelu = W2                                   # (H, C)
+    dsoftmax_drelu = dsoftmax_dfc2.dot(dfc2_drelu.T)  # (N, H)
+
+    drelu_dfc1 = fc1 > 0                              # (N, H)
+    dsoftmax_dfc1 = dsoftmax_drelu * drelu_dfc1       # (N, H)
+
+    dfc1_dX = W1                                      # (D, H)
+    dsoftmax_dX = dsoftmax_dfc1.dot(dfc1_dX.T)        # (N, D)
+
+    #---------------------------------------------------------------------------#
+
+    dfc1_dW1 = X                                      # (N, D)
+    dsoftmax_dW1 = dfc1_dW1.T.dot(dsoftmax_dfc1)      # (D, H)
+    dsoftmax_db1 = np.sum(dsoftmax_dfc1, axis=0)      # (H,)
+
+    dfc2_dW2 = relu                                   # (N, H)
+    dsoftmax_dW2 = dfc2_dW2.T.dot(dsoftmax_dfc2)      # (H, C)
+    dsoftmax_db2 = np.sum(dsoftmax_dfc2, axis=0)      # (C,)
+
+    grads['W1'] = dsoftmax_dW1 + reg * W1
+    grads['b1'] = dsoftmax_db1
+    grads['W2'] = dsoftmax_dW2 + reg * W2
+    grads['b2'] = dsoftmax_db2
     #############################################################################
     #                              END OF YOUR CODE                             #
     #############################################################################
