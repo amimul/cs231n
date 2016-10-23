@@ -187,24 +187,21 @@ class FullyConnectedNet(object):
     # parameters should be initialized to zero.                                #
     ############################################################################
     for i in range(self.num_layers):
+      layer_input_size = input_dim if i - 1 < 0 else hidden_dims[i - 1]
+      layer_output_size = (num_classes if i == self.num_layers - 1
+                                       else hidden_dims[i])
+
       W_name = 'W' + str(i + 1)
       b_name = 'b' + str(i + 1)
-
-      layer_input_size_index = i - 1
-      if layer_input_size_index < 0:
-        layer_input_size = input_dim
-      else:
-        layer_input_size = hidden_dims[layer_input_size_index]
-
-      layer_output_size_index = i
-      if layer_output_size_index == self.num_layers - 1:
-        layer_output_size = num_classes
-      else:
-        layer_output_size = hidden_dims[layer_output_size_index]
-
       self.params[W_name] = weight_scale * np.random.randn(layer_input_size,
                                                            layer_output_size)
       self.params[b_name] = np.zeros(layer_output_size)
+
+      if self.use_batchnorm and i < self.num_layers - 1:
+        gamma_name = 'gamma' + str(i + 1)
+        beta_name = 'beta' + str(i + 1)
+        self.params[gamma_name] = np.ones(layer_output_size)
+        self.params[beta_name] = np.ones(layer_output_size)
     ############################################################################
     #                             END OF YOUR CODE                             #
     ############################################################################
@@ -269,17 +266,28 @@ class FullyConnectedNet(object):
     for i in range(self.num_layers):
       W_name = 'W' + str(i + 1)
       b_name = 'b' + str(i + 1)
-      layer_W = self.params[W_name]
-      layer_b = self.params[b_name]
+      W = self.params[W_name]
+      b = self.params[b_name]
 
-      fc_out, fc_cache = affine_forward(layer_input, layer_W, layer_b)
+      fc_out, fc_cache = affine_forward(layer_input, W, b)
 
       if i == self.num_layers - 1:
         scores = fc_out
-        layer_caches.append((fc_cache, None))
+        layer_caches.append((fc_cache, None, None))
       else:
-        relu_out, relu_cache = relu_forward(fc_out)
-        layer_caches.append((fc_cache, relu_cache))
+        if self.use_batchnorm:
+          gamma_name = 'gamma' + str(i + 1)
+          beta_name = 'beta' + str(i + 1)
+          gamma = self.params[gamma_name]
+          beta = self.params[beta_name]
+
+          bn_out, bn_cache = batchnorm_forward(fc_out, gamma, beta,
+                                               self.bn_params[i])
+          relu_out, relu_cache = relu_forward(bn_out)
+          layer_caches.append((fc_cache, bn_cache, relu_cache))
+        else:
+          relu_out, relu_cache = relu_forward(fc_out)
+          layer_caches.append((fc_cache, None, relu_cache))
         layer_input = relu_out
     ############################################################################
     #                             END OF YOUR CODE                             #
@@ -304,20 +312,29 @@ class FullyConnectedNet(object):
     # of 0.5 to simplify the expression for the gradient.                      #
     ############################################################################
     for i in reversed(range(self.num_layers)):
-      fc_cache, relu_cache = layer_caches[i]
+      fc_cache, bn_cache, relu_cache = layer_caches[i]
+
       if i == self.num_layers - 1:
         loss, dfc = softmax_loss(scores, y)
       else:
-        dfc = relu_backward(doutput, relu_cache)
+        if self.use_batchnorm:
+          dbn = relu_backward(doutput, relu_cache)
+          dfc, dgamma, dbeta = batchnorm_backward(dbn, bn_cache)
+        else:
+          dfc = relu_backward(doutput, relu_cache)
       dinput, dW, db = affine_backward(dfc, fc_cache)
 
       W_name = 'W' + str(i + 1)
       b_name = 'b' + str(i + 1)
-      layer_W = self.params[W_name]
-      layer_b = self.params[b_name]
-      loss += 0.5 * self.reg * np.sum(layer_W**2)
-      grads[W_name] = dW + self.reg * layer_W
+      W = self.params[W_name]
+      loss += 0.5 * self.reg * np.sum(W**2)
+      grads[W_name] = dW + self.reg * W
       grads[b_name] = db
+      if self.use_batchnorm and i < self.num_layers - 1:
+        gamma_name = 'gamma' + str(i + 1)
+        beta_name = 'beta' + str(i + 1)
+        grads[gamma_name] = dgamma
+        grads[beta_name] = dbeta
 
       doutput = dinput
     ############################################################################

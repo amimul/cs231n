@@ -173,7 +173,41 @@ def batchnorm_forward(x, gamma, beta, bn_param):
     # the momentum variable to update the running mean and running variance,    #
     # storing your result in the running_mean and running_var variables.        #
     #############################################################################
-    pass
+    """
+    sample_mean = np.sum(x, axis=0) / N
+    sample_var = np.sum((x - sample_mean)**2, axis=0) / N
+
+    normalized_x = (x - sample_mean) / (np.sqrt(sample_var + eps))
+    scaled_shifted_x = gamma * normalized_x + beta
+    out = scaled_shifted_x
+
+    running_mean = momentum * running_mean + (1 - momentum) * sample_mean
+    running_var = momentum * running_var + (1 - momentum) * sample_var
+    """
+
+    """
+    Ref:
+    https://kratzert.github.io/2016/02/12/understanding-the-gradient-flow-through-the-batch-normalization-layer.html
+    http://cthorey.github.io./backpropagation/
+    """
+
+    mu = np.sum(x, axis=0) / N    # 1 (D,)
+    xmu = x - mu                  # 2 (N, D)
+    sq = xmu**2                   # 3 (N, D)
+    var = np.sum(sq, axis=0) / N  # 4 (D,)
+
+    sqrtvar = np.sqrt(var + eps)  # 5 (D,)
+    invvar = 1 / sqrtvar          # 6 (D,)
+    xhat = xmu * invvar           # 7 (N, D)
+    gxhat = gamma * xhat          # 8 (N, D)
+    out = gxhat + beta            # 9 (N, D)
+
+    sample_mean = mu
+    sample_var = var
+    running_mean = momentum * running_mean + (1 - momentum) * sample_mean
+    running_var = momentum * running_var + (1 - momentum) * sample_var
+
+    cache = (gamma, xmu, sqrtvar, invvar, xhat)
     #############################################################################
     #                             END OF YOUR CODE                              #
     #############################################################################
@@ -184,7 +218,9 @@ def batchnorm_forward(x, gamma, beta, bn_param):
     # and shift the normalized data using gamma and beta. Store the result in   #
     # the out variable.                                                         #
     #############################################################################
-    pass
+    normalized_x = (x - running_mean) / (np.sqrt(running_var + eps))
+    scaled_shifted_x = gamma * normalized_x + beta
+    out = scaled_shifted_x
     #############################################################################
     #                             END OF YOUR CODE                              #
     #############################################################################
@@ -220,7 +256,42 @@ def batchnorm_backward(dout, cache):
   # TODO: Implement the backward pass for batch normalization. Store the      #
   # results in the dx, dgamma, and dbeta variables.                           #
   #############################################################################
-  pass
+  (gamma, xmu, sqrtvar, invvar, xhat) = cache
+  (N, D) = dout.shape
+  N_D_shape = (N, D)
+
+  # dz means the gradient of the loss function with respect to z, that is dL/dz
+
+  # 9, out = gxhat + beta
+  dbeta = np.sum(dout, axis=0)
+  dgxhat = dout
+
+  # 8, gxhat = gamma * xhat
+  dgamma = np.sum(dgxhat * xhat, axis=0)
+  dxhat = dgxhat * gamma
+
+  # 7, xhat = xmu * invvar
+  dxmu = dxhat * invvar
+  dinvvar = np.sum(dxhat * xmu, axis=0)
+
+  # 6, invvar = 1 / sqrtvar
+  dsqrtvar = dinvvar * (-1 / np.square(sqrtvar))
+
+  # 5, sqrtvar = np.sqrt(var + eps)
+  dvar = dsqrtvar * (0.5 / sqrtvar)
+
+  # 4, var = np.sum(sq, axis=0) / N
+  dsq = dvar * (np.ones((N,D)) / N)
+
+  # 3, sq = xmu**2
+  dxmu += dsq * (2 * xmu)
+
+  # 2, xmu = x - mu 
+  dmu = np.sum(dxmu * (-1), axis=0)
+  dx = dxmu * 1
+
+  # 1, mu = np.sum(x, axis=0) / N
+  dx += dmu * (np.ones((N,D)) / N)
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
@@ -250,7 +321,9 @@ def batchnorm_backward_alt(dout, cache):
   # should be able to compute gradients with respect to the inputs in a       #
   # single statement; our implementation fits on a single 80-character line.  #
   #############################################################################
-  pass
+  """
+  Code deleted. See this page: http://cthorey.github.io./backpropagation/
+  """
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
