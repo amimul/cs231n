@@ -322,6 +322,7 @@ class FullyConnectedNet(object):
           dfc, dgamma, dbeta = batchnorm_backward(dbn, bn_cache)
         else:
           dfc = relu_backward(doutput, relu_cache)
+
       dinput, dW, db = affine_backward(dfc, fc_cache)
 
       W_name = 'W' + str(i + 1)

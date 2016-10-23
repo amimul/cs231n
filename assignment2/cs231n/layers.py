@@ -185,22 +185,18 @@ def batchnorm_forward(x, gamma, beta, bn_param):
     running_var = momentum * running_var + (1 - momentum) * sample_var
     """
 
-    """
-    Ref:
-    https://kratzert.github.io/2016/02/12/understanding-the-gradient-flow-through-the-batch-normalization-layer.html
-    http://cthorey.github.io./backpropagation/
-    """
+    # References: https://kratzert.github.io/2016/02/12/understanding-the-gradient-flow-through-the-batch-normalization-layer.html
 
-    mu = np.sum(x, axis=0) / N    # 1 (D,)
-    xmu = x - mu                  # 2 (N, D)
-    sq = xmu**2                   # 3 (N, D)
-    var = np.sum(sq, axis=0) / N  # 4 (D,)
+    mu = np.sum(x, axis=0) / N    # 1, (D,)
+    xmu = x - mu                  # 2, (N, D)
+    sq = xmu**2                   # 3, (N, D)
+    var = np.sum(sq, axis=0) / N  # 4, (D,)
 
-    sqrtvar = np.sqrt(var + eps)  # 5 (D,)
-    invvar = 1 / sqrtvar          # 6 (D,)
-    xhat = xmu * invvar           # 7 (N, D)
-    gxhat = gamma * xhat          # 8 (N, D)
-    out = gxhat + beta            # 9 (N, D)
+    sqrtvar = np.sqrt(var + eps)  # 5, (D,)
+    invvar = 1 / sqrtvar          # 6, (D,)
+    xhat = xmu * invvar           # 7, (N, D)
+    gxhat = gamma * xhat          # 8, (N, D)
+    out = gxhat + beta            # 9, (N, D)
 
     sample_mean = mu
     sample_var = var
@@ -258,7 +254,6 @@ def batchnorm_backward(dout, cache):
   #############################################################################
   (gamma, xmu, sqrtvar, invvar, xhat) = cache
   (N, D) = dout.shape
-  N_D_shape = (N, D)
 
   # dz means the gradient of the loss function with respect to z, that is dL/dz
 
@@ -321,9 +316,9 @@ def batchnorm_backward_alt(dout, cache):
   # should be able to compute gradients with respect to the inputs in a       #
   # single statement; our implementation fits on a single 80-character line.  #
   #############################################################################
-  """
-  Code deleted. See this page: http://cthorey.github.io./backpropagation/
-  """
+
+  # Code deleted. See this page: http://cthorey.github.io./backpropagation/
+
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
