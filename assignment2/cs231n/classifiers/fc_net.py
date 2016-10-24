@@ -264,31 +264,37 @@ class FullyConnectedNet(object):
     layer_input = X_flat
     layer_caches = []
     for i in range(self.num_layers):
+      bn_cache, relu_cache, dp_cache = None, None, None
+
       W_name = 'W' + str(i + 1)
       b_name = 'b' + str(i + 1)
       W = self.params[W_name]
       b = self.params[b_name]
-
       fc_out, fc_cache = affine_forward(layer_input, W, b)
 
       if i == self.num_layers - 1:
         scores = fc_out
-        layer_caches.append((fc_cache, None, None))
       else:
         if self.use_batchnorm:
           gamma_name = 'gamma' + str(i + 1)
           beta_name = 'beta' + str(i + 1)
           gamma = self.params[gamma_name]
           beta = self.params[beta_name]
-
           bn_out, bn_cache = batchnorm_forward(fc_out, gamma, beta,
                                                self.bn_params[i])
-          relu_out, relu_cache = relu_forward(bn_out)
-          layer_caches.append((fc_cache, bn_cache, relu_cache))
+          relu_input = bn_out
         else:
-          relu_out, relu_cache = relu_forward(fc_out)
-          layer_caches.append((fc_cache, None, relu_cache))
-        layer_input = relu_out
+          relu_input = fc_out
+
+        relu_out, relu_cache = relu_forward(relu_input)
+
+        if self.use_dropout:
+          dp_out, dp_cache = dropout_forward(relu_out, self.dropout_param)
+          layer_input = dp_out
+        else:
+          layer_input = relu_out
+
+      layer_caches.append((fc_cache, bn_cache, relu_cache, dp_cache))
     ############################################################################
     #                             END OF YOUR CODE                             #
     ############################################################################
@@ -312,16 +318,23 @@ class FullyConnectedNet(object):
     # of 0.5 to simplify the expression for the gradient.                      #
     ############################################################################
     for i in reversed(range(self.num_layers)):
-      fc_cache, bn_cache, relu_cache = layer_caches[i]
+      fc_cache, bn_cache, relu_cache, dp_cache = layer_caches[i]
 
       if i == self.num_layers - 1:
         loss, dfc = softmax_loss(scores, y)
       else:
+        if self.use_dropout:
+          drelu = dropout_backward(doutput, dp_cache)
+        else:
+          drelu = doutput
+
+        dbn_or_dfc = relu_backward(drelu, relu_cache)
+
         if self.use_batchnorm:
-          dbn = relu_backward(doutput, relu_cache)
+          dbn = dbn_or_dfc
           dfc, dgamma, dbeta = batchnorm_backward(dbn, bn_cache)
         else:
-          dfc = relu_backward(doutput, relu_cache)
+          dfc = dbn_or_dfc
 
       dinput, dW, db = affine_backward(dfc, fc_cache)
 
@@ -329,6 +342,7 @@ class FullyConnectedNet(object):
       b_name = 'b' + str(i + 1)
       W = self.params[W_name]
       loss += 0.5 * self.reg * np.sum(W**2)
+
       grads[W_name] = dW + self.reg * W
       grads[b_name] = db
       if self.use_batchnorm and i < self.num_layers - 1:
