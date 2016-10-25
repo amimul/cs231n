@@ -135,7 +135,35 @@ class CaptioningRNN(object):
     # defined above to store loss and gradients; grads[k] should give the      #
     # gradients for self.params[k].                                            #
     ############################################################################
-    pass
+    hidden0 = features.dot(W_proj) + b_proj                                  # 1
+    wordvec, wordvec_cache = word_embedding_forward(captions_in, W_embed)    # 2
+    if self.cell_type == 'rnn':
+      hidden, hidden_cache = rnn_forward(wordvec, hidden0, Wx, Wh, b)        # 3
+    else:
+      pass
+    scores, scores_cache = temporal_affine_forward(hidden, W_vocab, b_vocab) # 4
+    loss, dscores = temporal_softmax_loss(scores, captions_out, mask)        # 5
+
+    dhidden, dW_vocab, db_vocab = temporal_affine_backward(dscores,
+                                                           scores_cache)
+    if self.cell_type == 'rnn':
+      dwordvec, dhidden0, dWx, dWh, db = rnn_backward(dhidden, hidden_cache)
+    else:
+      pass
+    dW_embed = word_embedding_backward(dwordvec, wordvec_cache)
+    db_proj = np.sum(dhidden0, axis=0)
+    dW_proj = features.T.dot(dhidden0)
+
+    grads = {
+      'W_embed': dW_embed,
+      'W_proj': dW_proj,
+      'b_proj': db_proj,
+      'Wx': dWx,
+      'Wh': dWh,
+      'b': db,
+      'W_vocab': dW_vocab,
+      'b_vocab': db_vocab
+    }
     ############################################################################
     #                             END OF YOUR CODE                             #
     ############################################################################
@@ -197,7 +225,18 @@ class CaptioningRNN(object):
     # functions; you'll need to call rnn_step_forward or lstm_step_forward in #
     # a loop.                                                                 #
     ###########################################################################
-    pass
+    hidden = features.dot(W_proj) + b_proj
+    wordvec = W_embed[np.ones(N, dtype=np.int32) * self._start]
+
+    for t in range(max_length):
+      if self.cell_type == 'rnn':
+        hidden, _ = rnn_step_forward(wordvec, hidden, Wx, Wh, b)
+      else:
+        pass
+      scores = hidden.dot(W_vocab) + b_vocab
+      wordidx = np.argmax(scores, axis=1)
+      captions[:, t] = wordidx
+      wordvec = W_embed[np.ones(N, dtype=np.int32) * wordidx]
     ############################################################################
     #                             END OF YOUR CODE                             #
     ############################################################################
