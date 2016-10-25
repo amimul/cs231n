@@ -53,8 +53,8 @@ class ThreeLayerConvNet(object):
     conv_param = {'stride': 1, 'pad': (filter_size - 1) / 2}
     pool_param = {'pool_height': 2, 'pool_width': 2, 'stride': 2}
 
-    conv_stride = conv_param['stride']
     conv_pad = conv_param['pad']
+    conv_stride = conv_param['stride']
     pool_height = pool_param['pool_height']
     pool_width = pool_param['pool_width']
     pool_stride = pool_param['stride']
@@ -134,7 +134,6 @@ class ThreeLayerConvNet(object):
     ############################################################################
     loss, dlayer3 = softmax_loss(layer3_out, y)
     dlayer2, dW3, db3 = affine_backward(dlayer3, layer3_cache)
-
     dlayer1, dW2, db2 = affine_relu_backward(dlayer2, layer2_cache)
     dlayer1 = dlayer1.reshape(*layer1_out_original_shape)
     dX, dW1, db1 = conv_relu_pool_backward(dlayer1, layer1_cache)
