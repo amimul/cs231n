@@ -1,0 +1,7 @@
+coco_captioning.zip
+coco_captioning/*
+
+pretrained_model.h5
+
+tiny-imagenet-100-A.zip
+tiny-imagenet-100-A/*
